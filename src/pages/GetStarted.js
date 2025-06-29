@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
@@ -383,8 +383,23 @@ const SubmitButton = styled.button`
 `;
 
 const GetStarted = () => {
+  useEffect(() => {
+    // Load the widget script if not already loaded
+    if (!document.querySelector('script[src*="elevenlabs/convai-widget-embed"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
+      script.async = true;
+      script.type = 'text/javascript';
+      document.head.appendChild(script);
+    }
+  }, []);
+
   const handleMicClick = () => {
-    window.open('https://convai.elevenlabs.io/agents/agent_01jxcab9waegnbw7bq6fsfknfg', '_blank');
+    if (window.elevenlabsConvai && typeof window.elevenlabsConvai.open === 'function') {
+      window.elevenlabsConvai.open();
+    } else {
+      alert('Voice assistant is not ready yet. Please try again in a moment.');
+    }
   };
 
   return (
