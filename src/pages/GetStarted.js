@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
@@ -383,33 +383,37 @@ const SubmitButton = styled.button`
 `;
 
 const GetStarted = () => {
-  const [widgetReady, setWidgetReady] = useState(false);
-
   useEffect(() => {
-    if (!document.querySelector('script[src*="elevenlabs/convai-widget-embed"]')) {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
-      script.async = true;
-      script.type = 'text/javascript';
-      document.head.appendChild(script);
+    // Check if script is already loaded
+    if (document.querySelector('script[src*="elevenlabs/convai-widget-embed"]')) {
+      return;
     }
-    // Poll for the widget's global object
-    const interval = setInterval(() => {
-      if (window.elevenlabsConvai && typeof window.elevenlabsConvai.open === 'function') {
-        setWidgetReady(true);
-        clearInterval(interval);
-      }
-    }, 200);
-    return () => clearInterval(interval);
-  }, []);
 
-  const handleMicClick = () => {
-    if (widgetReady) {
-      window.elevenlabsConvai.open();
-    } else {
-      alert('Voice assistant is not ready yet. Please try again in a moment.');
-    }
-  };
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
+    script.async = true;
+    script.type = 'text/javascript';
+    
+    // Add error handling
+    script.onerror = () => {
+      console.error('Failed to load ElevenLabs Convai widget script');
+    };
+    
+    script.onload = () => {
+      console.log('ElevenLabs Convai widget script loaded successfully');
+    };
+    
+    // Append to head instead of body
+    document.head.appendChild(script);
+    
+    return () => {
+      // Only remove if the script still exists
+      const existingScript = document.querySelector('script[src*="elevenlabs/convai-widget-embed"]');
+      if (existingScript && existingScript.parentNode) {
+        existingScript.parentNode.removeChild(existingScript);
+      }
+    };
+  }, []);
 
   return (
     <PageContainer>
@@ -427,7 +431,7 @@ const GetStarted = () => {
               <rect x="54" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
               <rect x="64" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
             </AnimatedSoundWave>
-            <MicButton tabIndex={0} aria-label="Microphone" onClick={handleMicClick} disabled={!widgetReady}>
+            <MicButton tabIndex={0} aria-label="Microphone">
               <MicIcon />
             </MicButton>
             <AnimatedSoundWave viewBox="0 0 70 38" fill="none">
@@ -536,6 +540,10 @@ const GetStarted = () => {
             <SubmitButton type="submit">Submit</SubmitButton>
           </ContactForm>
         </ContactFormWrapper>
+        {/* ElevenLabs Convai Widget */}
+        <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+          <elevenlabs-convai agent-id="agent_01jxcab9waegnbw7bq6fsfknfg"></elevenlabs-convai>
+        </div>
       </Wrapper>
       <Footer />
     </PageContainer>

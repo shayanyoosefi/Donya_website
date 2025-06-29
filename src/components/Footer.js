@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { FaLinkedin, FaTwitter, FaInstagram, FaFacebook } from 'react-icons/fa';
 
 const FooterWrapper = styled.footer`
-  width: 100vw;
+  width: 100%;
   background: #122524;
   color: #fff;
   padding: 2.2rem 0 1.2rem 0;
@@ -12,6 +12,7 @@ const FooterWrapper = styled.footer`
   flex-direction: column;
   align-items: center;
   margin-top: 4rem;
+  box-sizing: border-box;
 `;
 
 const NavLinks = styled.div`
