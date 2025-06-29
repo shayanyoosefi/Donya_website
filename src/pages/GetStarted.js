@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
@@ -383,8 +383,9 @@ const SubmitButton = styled.button`
 `;
 
 const GetStarted = () => {
+  const [widgetReady, setWidgetReady] = useState(false);
+
   useEffect(() => {
-    // Load the widget script if not already loaded
     if (!document.querySelector('script[src*="elevenlabs/convai-widget-embed"]')) {
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
@@ -392,10 +393,18 @@ const GetStarted = () => {
       script.type = 'text/javascript';
       document.head.appendChild(script);
     }
+    // Poll for the widget's global object
+    const interval = setInterval(() => {
+      if (window.elevenlabsConvai && typeof window.elevenlabsConvai.open === 'function') {
+        setWidgetReady(true);
+        clearInterval(interval);
+      }
+    }, 200);
+    return () => clearInterval(interval);
   }, []);
 
   const handleMicClick = () => {
-    if (window.elevenlabsConvai && typeof window.elevenlabsConvai.open === 'function') {
+    if (widgetReady) {
       window.elevenlabsConvai.open();
     } else {
       alert('Voice assistant is not ready yet. Please try again in a moment.');
@@ -418,7 +427,7 @@ const GetStarted = () => {
               <rect x="54" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
               <rect x="64" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
             </AnimatedSoundWave>
-            <MicButton tabIndex={0} aria-label="Microphone" onClick={handleMicClick}>
+            <MicButton tabIndex={0} aria-label="Microphone" onClick={handleMicClick} disabled={!widgetReady}>
               <MicIcon />
             </MicButton>
             <AnimatedSoundWave viewBox="0 0 70 38" fill="none">
