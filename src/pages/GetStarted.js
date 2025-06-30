@@ -407,21 +407,23 @@ const useElevenLabs = (apiKey, agentId) => {
           throw new Error(`Failed to get signed URL: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
         }
 
-        const { url } = await response.json();
+        const responseBody = await response.json();
+        console.log('ElevenLabs API Response:', responseBody);
         
-        if (!url) {
-          throw new Error('Signed URL is missing in the API response.');
+        const { signed_url } = responseBody;
+
+        if (!signed_url) {
+          throw new Error('Signed URL (`signed_url`) is missing in the API response. Full response logged above.');
         }
 
-        const ws = new WebSocket(url);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
+        wsRef.current = new WebSocket(signed_url);
+        
+        wsRef.current.onopen = () => {
           setStatus('connected');
-          ws.send(JSON.stringify({ text: 'Hello' }));
+          wsRef.current.send(JSON.stringify({ text: 'Hello' }));
         };
 
-        ws.onmessage = (event) => {
+        wsRef.current.onmessage = (event) => {
           const data = JSON.parse(event.data);
           if (data.audio) {
             const audioChunk = atob(data.audio);
@@ -437,8 +439,8 @@ const useElevenLabs = (apiKey, agentId) => {
           }
         };
 
-        ws.onclose = () => setStatus('disconnected');
-        ws.onerror = (err) => {
+        wsRef.current.onclose = () => setStatus('disconnected');
+        wsRef.current.onerror = (err) => {
           console.error('WebSocket error:', err);
           setStatus('disconnected');
         };
