@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
@@ -382,73 +382,169 @@ const SubmitButton = styled.button`
   }
 `;
 
-const GetStarted = () => {
-  useEffect(() => {
-    // Check if script is already loaded
-    if (document.querySelector('script[src*="elevenlabs/convai-widget-embed"]')) {
-      return;
-    }
+const ELEVENLABS_API_KEY = 'sk_8310d85e9cc751ec8246cd10e7a856b6a8bdd2f4474cb1bf';
+const AGENT_ID = 'agent_01jxah5atcfbxvcatmjn4960xz';
 
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
-    script.async = true;
-    script.type = 'text/javascript';
-    
-    // Add error handling
-    script.onerror = () => {
-      console.error('Failed to load ElevenLabs Convai widget script');
-    };
-    
-    script.onload = () => {
-      console.log('ElevenLabs Convai widget script loaded successfully');
-    };
-    
-    // Append to head instead of body
-    document.head.appendChild(script);
-    
-    return () => {
-      // Only remove if the script still exists
-      const existingScript = document.querySelector('script[src*="elevenlabs/convai-widget-embed"]');
-      if (existingScript && existingScript.parentNode) {
-        existingScript.parentNode.removeChild(existingScript);
+const useElevenLabs = (apiKey, agentId) => {
+  const [status, setStatus] = useState('idle');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const wsRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioQueueRef = useRef([]);
+  const audioContextRef = useRef(null);
+
+  useEffect(() => {
+    const connect = async () => {
+      setStatus('connecting');
+      try {
+        const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${agentId}`, {
+          headers: { 'xi-api-key': apiKey },
+        });
+        const { url } = await response.json();
+        
+        const ws = new WebSocket(url);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          setStatus('connected');
+          ws.send(JSON.stringify({ text: 'Hello' }));
+        };
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.audio) {
+            const audioChunk = atob(data.audio);
+            const uint8Array = new Uint8Array(audioChunk.length);
+            for (let i = 0; i < audioChunk.length; i++) {
+              uint8Array[i] = audioChunk.charCodeAt(i);
+            }
+            audioQueueRef.current.push(uint8Array.buffer);
+            if (!isSpeaking) {
+              setIsSpeaking(true);
+              playNextInQueue();
+            }
+          }
+        };
+
+        ws.onclose = () => setStatus('disconnected');
+        ws.onerror = (err) => {
+          console.error('WebSocket error:', err);
+          setStatus('disconnected');
+        };
+      } catch (err) {
+        console.error('Failed to get signed URL:', err);
+        setStatus('disconnected');
       }
     };
-  }, []);
+    connect();
+    return () => wsRef.current?.close();
+  }, [apiKey, agentId, isSpeaking]);
+
+  const playNextInQueue = async () => {
+    if (audioQueueRef.current.length > 0) {
+      const audioBuffer = audioQueueRef.current.shift();
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const audioSource = audioContextRef.current.createBufferSource();
+      audioSource.buffer = await audioContextRef.current.decodeAudioData(audioBuffer);
+      audioSource.connect(audioContextRef.current.destination);
+      audioSource.start();
+      audioSource.onended = playNextInQueue;
+    } else {
+      setIsSpeaking(false);
+    }
+  };
+
+  const startConversation = async () => {
+    if (isListening) return;
+    setIsListening(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0 && wsRef.current.readyState === WebSocket.OPEN) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            wsRef.current.send(JSON.stringify({ audio: reader.result.split(',')[1] }));
+          };
+          reader.readAsDataURL(event.data);
+        }
+      };
+      mediaRecorder.start(500);
+    } catch (err) {
+      console.error('Error getting media stream:', err);
+      setIsListening(false);
+    }
+  };
+
+  const stopConversation = () => {
+    if (!isListening || !mediaRecorderRef.current) return;
+    mediaRecorderRef.current.stop();
+    mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    setIsListening(false);
+  };
+
+  return { status, isSpeaking, isListening, startConversation, stopConversation };
+};
+
+const VoiceInterface = ({ status, isListening, isSpeaking, onStart, onStop }) => (
+  <Card>
+    <MicRow>
+      <AnimatedSoundWave viewBox="0 0 70 38" fill="none">
+        <rect x="4" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
+        <rect x="14" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
+        <rect x="24" y="16" width="4" height="14" rx="2" fill="#4be18a"/>
+        <rect x="34" y="6" width="4" height="30" rx="2" fill="#4be18a"/>
+        <rect x="44" y="16" width="4" height="14" rx="2" fill="#4be18a"/>
+        <rect x="54" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
+        <rect x="64" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
+      </AnimatedSoundWave>
+      <MicButton
+        onClick={isListening ? onStop : onStart}
+        disabled={status !== 'connected'}
+        style={{
+          background: isListening ? '#ff5252' : isSpeaking ? '#f0ad4e' : '#4be18a',
+          cursor: status !== 'connected' ? 'not-allowed' : 'pointer',
+        }}
+      >
+        <MicIcon />
+      </MicButton>
+      <AnimatedSoundWave viewBox="0 0 70 38" fill="none">
+        <rect x="4" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
+        <rect x="14" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
+        <rect x="24" y="16" width="4" height="14" rx="2" fill="#4be18a"/>
+        <rect x="34" y="6" width="4" height="30" rx="2" fill="#4be18a"/>
+        <rect x="44" y="16" width="4" height="14" rx="2" fill="#4be18a"/>
+        <rect x="54" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
+        <rect x="64" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
+      </AnimatedSoundWave>
+    </MicRow>
+    <CallText>
+      {status === 'connecting' && 'Connecting...'}
+      {status === 'connected' && (isListening ? 'Listening...' : isSpeaking ? 'Agent is speaking...' : 'Press the mic to talk')}
+      {status === 'disconnected' && 'Connection lost.'}
+    </CallText>
+  </Card>
+);
+
+const GetStarted = () => {
+  const { status, isSpeaking, isListening, startConversation, stopConversation } = useElevenLabs(ELEVENLABS_API_KEY, AGENT_ID);
 
   return (
     <PageContainer>
       <Wrapper>
         <TopBar />
-        <Slogan>Empower Your Business with AI.</Slogan>
-        <Card>
-          <MicRow>
-            <AnimatedSoundWave viewBox="0 0 70 38" fill="none">
-              <rect x="4" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
-              <rect x="14" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
-              <rect x="24" y="16" width="4" height="14" rx="2" fill="#4be18a"/>
-              <rect x="34" y="6" width="4" height="30" rx="2" fill="#4be18a"/>
-              <rect x="44" y="16" width="4" height="14" rx="2" fill="#4be18a"/>
-              <rect x="54" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
-              <rect x="64" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
-            </AnimatedSoundWave>
-            <MicButton tabIndex={0} aria-label="Microphone">
-              <MicIcon />
-            </MicButton>
-            <AnimatedSoundWave viewBox="0 0 70 38" fill="none">
-              <rect x="4" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
-              <rect x="14" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
-              <rect x="24" y="16" width="4" height="14" rx="2" fill="#4be18a"/>
-              <rect x="34" y="6" width="4" height="30" rx="2" fill="#4be18a"/>
-              <rect x="44" y="16" width="4" height="14" rx="2" fill="#4be18a"/>
-              <rect x="54" y="10" width="4" height="26" rx="2" fill="#4be18a"/>
-              <rect x="64" y="18" width="4" height="10" rx="2" fill="#4be18a"/>
-            </AnimatedSoundWave>
-          </MicRow>
-          <CallText>
-            Call <Phone>(888) 747-2074</Phone> to try us out.
-          </CallText>
-          <DemoButton>Book a demo</DemoButton>
-        </Card>
+        <Slogan>Talk to Our AI Assistant</Slogan>
+        <VoiceInterface
+          status={status}
+          isListening={isListening}
+          isSpeaking={isSpeaking}
+          onStart={startConversation}
+          onStop={stopConversation}
+        />
         <SectionHeader>What Donya can do for you?</SectionHeader>
         <FeaturesGrid>
           <FeatureCard>
@@ -540,10 +636,6 @@ const GetStarted = () => {
             <SubmitButton type="submit">Submit</SubmitButton>
           </ContactForm>
         </ContactFormWrapper>
-        {/* ElevenLabs Convai Widget */}
-        <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-          <elevenlabs-convai agent-id="agent_01jxah5atcfbxvcatmjn4960xz"></elevenlabs-convai>
-        </div>
       </Wrapper>
       <Footer />
     </PageContainer>
