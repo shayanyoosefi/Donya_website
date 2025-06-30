@@ -401,8 +401,18 @@ const useElevenLabs = (apiKey, agentId) => {
         const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${agentId}`, {
           headers: { 'xi-api-key': apiKey },
         });
+
+        if (!response.ok) {
+          const errorBody = await response.json();
+          throw new Error(`Failed to get signed URL: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+        }
+
         const { url } = await response.json();
         
+        if (!url) {
+          throw new Error('Signed URL is missing in the API response.');
+        }
+
         const ws = new WebSocket(url);
         wsRef.current = ws;
 
