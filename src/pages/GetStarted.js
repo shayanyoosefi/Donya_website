@@ -420,7 +420,6 @@ const useElevenLabs = (apiKey, agentId) => {
         
         wsRef.current.onopen = () => {
           setStatus('connected');
-          wsRef.current.send(JSON.stringify({ text: 'Hello' }));
         };
 
         wsRef.current.onmessage = (event) => {
