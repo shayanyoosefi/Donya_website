@@ -385,6 +385,82 @@ const SubmitButton = styled.button`
 const ELEVENLABS_API_KEY = 'sk_8310d85e9cc751ec8246cd10e7a856b6a8bdd2f4474cb1bf';
 const AGENT_ID = 'agent_01jxah5atcfbxvcatmjn4960xz';
 
+// Helper: Convert Float32Array [-1, 1] to Int16 PCM
+function floatTo16BitPCM(float32Array) {
+  const int16Array = new Int16Array(float32Array.length);
+  for (let i = 0; i < float32Array.length; i++) {
+    let s = Math.max(-1, Math.min(1, float32Array[i]));
+    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+  return int16Array;
+}
+
+// Helper: Base64 encode Int16 PCM
+function pcmToBase64(int16Array) {
+  let binary = '';
+  for (let i = 0; i < int16Array.length; i++) {
+    binary += String.fromCharCode(int16Array[i] & 0xff, (int16Array[i] >> 8) & 0xff);
+  }
+  return btoa(binary);
+}
+
+function pcmToWav(pcmData, sampleRate = 16000) {
+  const numChannels = 1;
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const wavHeader = new ArrayBuffer(44);
+  const view = new DataView(wavHeader);
+
+  // RIFF identifier 'RIFF'
+  view.setUint32(0, 0x52494646, false);
+  // file length minus RIFF identifier length and file description length
+  view.setUint32(4, 36 + pcmData.length * bytesPerSample, true);
+  // RIFF type 'WAVE'
+  view.setUint32(8, 0x57415645, false);
+  // format chunk identifier 'fmt '
+  view.setUint32(12, 0x666d7420, false);
+  // format chunk length
+  view.setUint32(16, 16, true);
+  // sample format (raw)
+  view.setUint16(20, 1, true);
+  // channel count
+  view.setUint16(22, numChannels, true);
+  // sample rate
+  view.setUint32(24, sampleRate, true);
+  // byte rate (sample rate * block align)
+  view.setUint32(28, byteRate, true);
+  // block align (channel count * bytes per sample)
+  view.setUint16(32, blockAlign, true);
+  // bits per sample
+  view.setUint16(34, 16, true);
+  // data chunk identifier 'data'
+  view.setUint32(36, 0x64617461, false);
+  // data chunk length
+  view.setUint32(40, pcmData.length * bytesPerSample, true);
+
+  // PCM samples (assume input is Int16 PCM)
+  const wav = new Uint8Array(44 + pcmData.length * bytesPerSample);
+  wav.set(new Uint8Array(wavHeader), 0);
+  for (let i = 0; i < pcmData.length; i++) {
+    wav[44 + i * 2] = pcmData[i] & 0xff;
+    wav[44 + i * 2 + 1] = (pcmData[i] >> 8) & 0xff;
+  }
+  return wav;
+}
+
+// Helper: Resample Float32Array to 16kHz
+function resampleTo16kHz(float32Array, originalSampleRate) {
+  if (originalSampleRate === 16000) return float32Array;
+  const sampleRateRatio = originalSampleRate / 16000;
+  const newLength = Math.round(float32Array.length / sampleRateRatio);
+  const resampled = new Float32Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    resampled[i] = float32Array[Math.round(i * sampleRateRatio)];
+  }
+  return resampled;
+}
+
 const useElevenLabs = (apiKey, agentId) => {
   const [status, setStatus] = useState('idle');
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -393,6 +469,9 @@ const useElevenLabs = (apiKey, agentId) => {
   const mediaRecorderRef = useRef(null);
   const audioQueueRef = useRef([]);
   const audioContextRef = useRef(null);
+  const processorRef = useRef(null);
+  const inputRef = useRef(null);
+  const streamRef = useRef(null);
 
   useEffect(() => {
     const connect = async () => {
@@ -424,16 +503,29 @@ const useElevenLabs = (apiKey, agentId) => {
 
         wsRef.current.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          if (data.audio) {
-            const audioChunk = atob(data.audio);
-            const uint8Array = new Uint8Array(audioChunk.length);
-            for (let i = 0; i < audioChunk.length; i++) {
-              uint8Array[i] = audioChunk.charCodeAt(i);
+          console.log('Agent message:', data);
+          if (data.type === 'audio' && data.audio_event && data.audio_event.audio_base_64) {
+            const audioBase64 = data.audio_event.audio_base_64;
+            // Convert base64 to Int16 PCM samples
+            const binaryString = atob(audioBase64);
+            const pcmData = new Int16Array(binaryString.length / 2);
+            for (let i = 0; i < pcmData.length; i++) {
+              pcmData[i] = (binaryString.charCodeAt(i * 2)) | (binaryString.charCodeAt(i * 2 + 1) << 8);
             }
-            audioQueueRef.current.push(uint8Array.buffer);
-            if (!isSpeaking) {
-              setIsSpeaking(true);
-              playNextInQueue();
+            // Wrap PCM in WAV header
+            const wavData = pcmToWav(pcmData, 16000);
+            const blob = new Blob([wavData], { type: 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            console.log('Audio blob URL for download (audio/wav):', url);
+            const audio = new Audio(url);
+            if (audio.canPlayType('audio/wav')) {
+              audio.play();
+              audio.onended = () => {
+                URL.revokeObjectURL(url);
+              };
+            } else {
+              URL.revokeObjectURL(url);
+              console.error('No supported audio format found for this browser.');
             }
           }
         };
@@ -472,19 +564,29 @@ const useElevenLabs = (apiKey, agentId) => {
     if (isListening) return;
     setIsListening(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && wsRef.current.readyState === WebSocket.OPEN) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            wsRef.current.send(JSON.stringify({ audio: reader.result.split(',')[1] }));
-          };
-          reader.readAsDataURL(event.data);
+      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+      console.log('AudioContext sample rate:', audioContextRef.current.sampleRate);
+      if (audioContextRef.current.sampleRate !== 16000) {
+        console.warn('WARNING: AudioContext sample rate is not 16000 Hz. Actual:', audioContextRef.current.sampleRate);
+      }
+      inputRef.current = audioContextRef.current.createMediaStreamSource(streamRef.current);
+      processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+
+      processorRef.current.onaudioprocess = (e) => {
+        const float32 = e.inputBuffer.getChannelData(0);
+        const resampled = resampleTo16kHz(float32, audioContextRef.current.sampleRate);
+        const int16 = floatTo16BitPCM(resampled);
+        const base64 = pcmToBase64(int16);
+        const outgoing = { user_audio_chunk: base64 };
+        console.log('Sending audio chunk:', outgoing);
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify(outgoing));
         }
       };
-      mediaRecorder.start(500);
+
+      inputRef.current.connect(processorRef.current);
+      processorRef.current.connect(audioContextRef.current.destination);
     } catch (err) {
       console.error('Error getting media stream:', err);
       setIsListening(false);
@@ -492,9 +594,10 @@ const useElevenLabs = (apiKey, agentId) => {
   };
 
   const stopConversation = () => {
-    if (!isListening || !mediaRecorderRef.current) return;
-    mediaRecorderRef.current.stop();
-    mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    if (processorRef.current) processorRef.current.disconnect();
+    if (inputRef.current) inputRef.current.disconnect();
+    if (audioContextRef.current) audioContextRef.current.close();
+    if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
     setIsListening(false);
   };
 
