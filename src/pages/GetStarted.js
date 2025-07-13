@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
+import { RetellWebClient } from 'retell-client-js-sdk';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -382,226 +383,94 @@ const SubmitButton = styled.button`
   }
 `;
 
-const ELEVENLABS_API_KEY = 'sk_8310d85e9cc751ec8246cd10e7a856b6a8bdd2f4474cb1bf';
-const AGENT_ID = 'agent_01jxah5atcfbxvcatmjn4960xz';
+// Retell AI integration
+const AGENT_ID = 'agent_0ccfd1ffb79bf836aefff15912';
 
-// Helper: Convert Float32Array [-1, 1] to Int16 PCM
-function floatTo16BitPCM(float32Array) {
-  const int16Array = new Int16Array(float32Array.length);
-  for (let i = 0; i < float32Array.length; i++) {
-    let s = Math.max(-1, Math.min(1, float32Array[i]));
-    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-  }
-  return int16Array;
-}
-
-// Helper: Base64 encode Int16 PCM
-function pcmToBase64(int16Array) {
-  let binary = '';
-  for (let i = 0; i < int16Array.length; i++) {
-    binary += String.fromCharCode(int16Array[i] & 0xff, (int16Array[i] >> 8) & 0xff);
-  }
-  return btoa(binary);
-}
-
-function pcmToWav(pcmData, sampleRate = 16000) {
-  const numChannels = 1;
-  const bytesPerSample = 2;
-  const blockAlign = numChannels * bytesPerSample;
-  const byteRate = sampleRate * blockAlign;
-  const wavHeader = new ArrayBuffer(44);
-  const view = new DataView(wavHeader);
-
-  // RIFF identifier 'RIFF'
-  view.setUint32(0, 0x52494646, false);
-  // file length minus RIFF identifier length and file description length
-  view.setUint32(4, 36 + pcmData.length * bytesPerSample, true);
-  // RIFF type 'WAVE'
-  view.setUint32(8, 0x57415645, false);
-  // format chunk identifier 'fmt '
-  view.setUint32(12, 0x666d7420, false);
-  // format chunk length
-  view.setUint32(16, 16, true);
-  // sample format (raw)
-  view.setUint16(20, 1, true);
-  // channel count
-  view.setUint16(22, numChannels, true);
-  // sample rate
-  view.setUint32(24, sampleRate, true);
-  // byte rate (sample rate * block align)
-  view.setUint32(28, byteRate, true);
-  // block align (channel count * bytes per sample)
-  view.setUint16(32, blockAlign, true);
-  // bits per sample
-  view.setUint16(34, 16, true);
-  // data chunk identifier 'data'
-  view.setUint32(36, 0x64617461, false);
-  // data chunk length
-  view.setUint32(40, pcmData.length * bytesPerSample, true);
-
-  // PCM samples (assume input is Int16 PCM)
-  const wav = new Uint8Array(44 + pcmData.length * bytesPerSample);
-  wav.set(new Uint8Array(wavHeader), 0);
-  for (let i = 0; i < pcmData.length; i++) {
-    wav[44 + i * 2] = pcmData[i] & 0xff;
-    wav[44 + i * 2 + 1] = (pcmData[i] >> 8) & 0xff;
-  }
-  return wav;
-}
-
-// Helper: Resample Float32Array to 16kHz
-function resampleTo16kHz(float32Array, originalSampleRate) {
-  if (originalSampleRate === 16000) return float32Array;
-  const sampleRateRatio = originalSampleRate / 16000;
-  const newLength = Math.round(float32Array.length / sampleRateRatio);
-  const resampled = new Float32Array(newLength);
-  for (let i = 0; i < newLength; i++) {
-    resampled[i] = float32Array[Math.round(i * sampleRateRatio)];
-  }
-  return resampled;
-}
-
-const useElevenLabs = (apiKey, agentId) => {
-  const [status, setStatus] = useState('idle');
-  const [isSpeaking, setIsSpeaking] = useState(false);
+const useRetellAI = () => {
+  const [status, setStatus] = useState('idle'); // idle | connecting | connected | disconnected
   const [isListening, setIsListening] = useState(false);
-  const wsRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioQueueRef = useRef([]);
-  const audioContextRef = useRef(null);
-  const processorRef = useRef(null);
-  const inputRef = useRef(null);
-  const streamRef = useRef(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const retellClientRef = useRef(null);
 
   useEffect(() => {
-    const connect = async () => {
-      setStatus('connecting');
-      try {
-        const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${agentId}`, {
-          headers: { 'xi-api-key': apiKey },
-        });
-
-        if (!response.ok) {
-          const errorBody = await response.json();
-          throw new Error(`Failed to get signed URL: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
-        }
-
-        const responseBody = await response.json();
-        console.log('ElevenLabs API Response:', responseBody);
-        
-        const { signed_url } = responseBody;
-
-        if (!signed_url) {
-          throw new Error('Signed URL (`signed_url`) is missing in the API response. Full response logged above.');
-        }
-
-        wsRef.current = new WebSocket(signed_url);
-        
-        wsRef.current.onopen = () => {
-          setStatus('connected');
-        };
-
-        wsRef.current.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          console.log('Agent message:', data);
-          if (data.type === 'audio' && data.audio_event && data.audio_event.audio_base_64) {
-            const audioBase64 = data.audio_event.audio_base_64;
-            // Convert base64 to Int16 PCM samples
-            const binaryString = atob(audioBase64);
-            const pcmData = new Int16Array(binaryString.length / 2);
-            for (let i = 0; i < pcmData.length; i++) {
-              pcmData[i] = (binaryString.charCodeAt(i * 2)) | (binaryString.charCodeAt(i * 2 + 1) << 8);
-            }
-            // Wrap PCM in WAV header
-            const wavData = pcmToWav(pcmData, 16000);
-            const blob = new Blob([wavData], { type: 'audio/wav' });
-            const url = URL.createObjectURL(blob);
-            console.log('Audio blob URL for download (audio/wav):', url);
-            const audio = new Audio(url);
-            if (audio.canPlayType('audio/wav')) {
-              audio.play();
-              audio.onended = () => {
-                URL.revokeObjectURL(url);
-              };
-            } else {
-              URL.revokeObjectURL(url);
-              console.error('No supported audio format found for this browser.');
-            }
-          }
-        };
-
-        wsRef.current.onclose = () => setStatus('disconnected');
-        wsRef.current.onerror = (err) => {
-          console.error('WebSocket error:', err);
-          setStatus('disconnected');
-        };
-      } catch (err) {
-        console.error('Failed to get signed URL:', err);
-        setStatus('disconnected');
+    // Initialize Retell client
+    retellClientRef.current = new RetellWebClient();
+    setStatus('idle');
+    setIsListening(false);
+    setIsSpeaking(false);
+    // Clean up on unmount
+    return () => {
+      if (retellClientRef.current) {
+        retellClientRef.current.stopCall();
       }
     };
-    connect();
-    return () => wsRef.current?.close();
-  }, [apiKey, agentId, isSpeaking]);
+  }, []);
 
-  const playNextInQueue = async () => {
-    if (audioQueueRef.current.length > 0) {
-      const audioBuffer = audioQueueRef.current.shift();
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const audioSource = audioContextRef.current.createBufferSource();
-      audioSource.buffer = await audioContextRef.current.decodeAudioData(audioBuffer);
-      audioSource.connect(audioContextRef.current.destination);
-      audioSource.start();
-      audioSource.onended = playNextInQueue;
-    } else {
+  // Attach event listeners
+  useEffect(() => {
+    const client = retellClientRef.current;
+    if (!client) return;
+    const handleCallStarted = () => setStatus('connected');
+    const handleCallEnded = () => {
+      setStatus('disconnected');
+      setIsListening(false);
+      setIsSpeaking(false);
+    };
+    const handleAgentStartTalking = () => {
+      setIsSpeaking(true);
+      setIsListening(false);
+    };
+    const handleAgentStopTalking = () => {
+      setIsSpeaking(false);
+      setIsListening(true);
+    };
+    const handleError = (err) => {
+      setStatus('disconnected');
+      setIsListening(false);
+      setIsSpeaking(false);
+      // Optionally log error
+      // console.error('Retell error:', err);
+    };
+    client.on('call_started', handleCallStarted);
+    client.on('call_ended', handleCallEnded);
+    client.on('agent_start_talking', handleAgentStartTalking);
+    client.on('agent_stop_talking', handleAgentStopTalking);
+    client.on('error', handleError);
+    return () => {
+      client.off('call_started', handleCallStarted);
+      client.off('call_ended', handleCallEnded);
+      client.off('agent_start_talking', handleAgentStartTalking);
+      client.off('agent_stop_talking', handleAgentStopTalking);
+      client.off('error', handleError);
+    };
+  }, []);
+
+  const startConversation = async () => {
+    setStatus('connecting');
+    try {
+      // Fetch a fresh access token from your backend
+      const resp = await fetch('http://localhost:5001/api/retell-token', { method: 'POST' });
+      const { access_token } = await resp.json();
+      await retellClientRef.current.startCall({
+        accessToken: access_token,
+        // sampleRate: 24000, // Optional: set sample rate
+      });
+      setIsListening(true);
+    } catch (err) {
+      setStatus('disconnected');
+      setIsListening(false);
       setIsSpeaking(false);
     }
   };
 
-  const startConversation = async () => {
-    if (isListening) return;
-    setIsListening(true);
-    try {
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-      console.log('AudioContext sample rate:', audioContextRef.current.sampleRate);
-      if (audioContextRef.current.sampleRate !== 16000) {
-        console.warn('WARNING: AudioContext sample rate is not 16000 Hz. Actual:', audioContextRef.current.sampleRate);
-      }
-      inputRef.current = audioContextRef.current.createMediaStreamSource(streamRef.current);
-      processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
-
-      processorRef.current.onaudioprocess = (e) => {
-        const float32 = e.inputBuffer.getChannelData(0);
-        const resampled = resampleTo16kHz(float32, audioContextRef.current.sampleRate);
-        const int16 = floatTo16BitPCM(resampled);
-        const base64 = pcmToBase64(int16);
-        const outgoing = { user_audio_chunk: base64 };
-        console.log('Sending audio chunk:', outgoing);
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify(outgoing));
-        }
-      };
-
-      inputRef.current.connect(processorRef.current);
-      processorRef.current.connect(audioContextRef.current.destination);
-    } catch (err) {
-      console.error('Error getting media stream:', err);
-      setIsListening(false);
-    }
-  };
-
   const stopConversation = () => {
-    if (processorRef.current) processorRef.current.disconnect();
-    if (inputRef.current) inputRef.current.disconnect();
-    if (audioContextRef.current) audioContextRef.current.close();
-    if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+    retellClientRef.current.stopCall();
+    setStatus('disconnected');
     setIsListening(false);
+    setIsSpeaking(false);
   };
 
-  return { status, isSpeaking, isListening, startConversation, stopConversation };
+  return { status, isListening, isSpeaking, startConversation, stopConversation };
 };
 
 const VoiceInterface = ({ status, isListening, isSpeaking, onStart, onStop }) => (
@@ -618,10 +487,10 @@ const VoiceInterface = ({ status, isListening, isSpeaking, onStart, onStop }) =>
       </AnimatedSoundWave>
       <MicButton
         onClick={isListening ? onStop : onStart}
-        disabled={status !== 'connected'}
+        disabled={status === 'connecting'}
         style={{
           background: isListening ? '#ff5252' : isSpeaking ? '#f0ad4e' : '#4be18a',
-          cursor: status !== 'connected' ? 'not-allowed' : 'pointer',
+          cursor: status === 'connecting' ? 'not-allowed' : 'pointer',
         }}
       >
         <MicIcon />
@@ -640,12 +509,17 @@ const VoiceInterface = ({ status, isListening, isSpeaking, onStart, onStop }) =>
       {status === 'connecting' && 'Connecting...'}
       {status === 'connected' && (isListening ? 'Listening...' : isSpeaking ? 'Agent is speaking...' : 'Press the mic to talk')}
       {status === 'disconnected' && 'Connection lost.'}
+      {status === 'idle' && 'Ready to start.'}
     </CallText>
+    {/* Debug status indicator */}
+    <div style={{ color: '#7be495', fontSize: '0.95rem', marginTop: 8, textAlign: 'center' }}>
+      <b>Status:</b> {status}
+    </div>
   </Card>
 );
 
 const GetStarted = () => {
-  const { status, isSpeaking, isListening, startConversation, stopConversation } = useElevenLabs(ELEVENLABS_API_KEY, AGENT_ID);
+  const { status, isSpeaking, isListening, startConversation, stopConversation } = useRetellAI();
 
   return (
     <PageContainer>
