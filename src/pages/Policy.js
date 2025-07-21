@@ -8,7 +8,7 @@ const PageContainer = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #b2f7ef 0%, #00bfae 100%);
+  background: ${({ theme }) => theme.background};
 `;
 
 const Wrapper = styled.div`
@@ -20,6 +20,7 @@ const Wrapper = styled.div`
   position: relative;
   overflow: hidden;
   background: none;
+  box-sizing: border-box;
   &::before {
     content: '';
     position: absolute;
@@ -40,41 +41,61 @@ const Wrapper = styled.div`
     background: radial-gradient(circle, #7be49588 0%, transparent 70%);
     z-index: 0;
   }
+
+  @media (max-width: 768px) {
+    padding: 2rem 1rem;
+    padding-top: 5rem;
+  }
 `;
 
 const Header = styled.h1`
-  color: #003d33;
+  color: ${({ theme }) => theme.primary};
   font-size: 2.7rem;
   font-weight: 900;
   margin-bottom: 1.1rem;
   letter-spacing: 1.5px;
   text-align: center;
   font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+
+  @media (max-width: 768px) {
+    font-size: 2.2rem;
+  }
 `;
 
 const AccentBar = styled.div`
   width: 240px;
   height: 10px;
-  background: linear-gradient(90deg, #00bfae 0%, #009e8e 100%);
+  background: ${({ theme }) => theme.secondary};
   border-radius: 12px;
   margin: 0 auto 2.1rem auto;
   box-shadow: 0 4px 16px rgba(0,191,174,0.18);
+
+  @media (max-width: 768px) {
+    width: 180px;
+    height: 8px;
+  }
 `;
 
 const GlassCard = styled.div`
-  background: rgba(255,255,255,0.97);
+  background: ${({ theme }) => theme.card};
   border-radius: 26px;
   box-shadow: 0 12px 48px rgba(0,191,174,0.18);
   padding: 3.2rem 2.7rem 2.7rem 2.7rem;
   max-width: 760px;
   width: 100%;
-  color: #003d33;
+  color: ${({ theme }) => theme.text};
   font-size: 1.22rem;
   line-height: 1.9;
   font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
   text-align: left;
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 2rem 1.5rem;
+    font-size: 1rem;
+  }
 `;
 
 const WatermarkIcon = styled(FaShieldAlt)`

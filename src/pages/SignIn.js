@@ -8,7 +8,7 @@ const PageContainer = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #00bfae 0%, #2d2e32 100%);
+  background: ${({ theme }) => theme.background};
 `;
 
 const Wrapper = styled.div`
@@ -19,25 +19,43 @@ const Wrapper = styled.div`
   justify-content: center;
   color: #fff;
   margin-top: 150px;
+  padding: 0 1rem;
+
+  @media (max-width: 768px) {
+    margin-top: 80px;
+    justify-content: flex-start;
+    padding-top: 5rem;
+  }
 `;
 
 const Form = styled.form`
-  background: #23242a;
+  background: ${({ theme }) => theme.card};
   padding: 2.5rem 2rem;
   border-radius: 18px;
   box-shadow: 0 4px 32px rgba(0,0,0,0.12);
   display: flex;
   flex-direction: column;
   gap: 1.3rem;
-  min-width: 320px;
+  width: 100%;
+  min-width: 0;
+  max-width: 420px;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 2rem 1.5rem;
+  }
 `;
 
 const Title = styled.h2`
-  color: #fff;
+  color: ${({ theme }) => theme.primary};
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
   text-align: center;
+
+  @media (max-width: 768px) {
+    font-size: 1.8rem;
+  }
 `;
 
 const Input = styled.input`
@@ -45,19 +63,23 @@ const Input = styled.input`
   border-radius: 8px;
   border: none;
   font-size: 1rem;
-  background: #2d2e32;
-  color: #fff;
+  background: ${({ theme }) => theme.backgroundAlt};
+  color: ${({ theme }) => theme.text};
   outline: none;
   transition: box-shadow 0.2s;
   box-shadow: 0 2px 8px rgba(0,191,174,0.04);
   &:focus {
-    box-shadow: 0 0 0 2px #00bfae;
+    box-shadow: 0 0 0 2px ${({ theme }) => theme.secondary};
+  }
+
+  @media (max-width: 768px) {
+    padding: 1rem;
   }
 `;
 
 const Button = styled.button`
-  background: #00bfae;
-  color: #fff;
+  background: ${({ theme }) => theme.secondary};
+  color: ${({ theme }) => theme.white};
   border: none;
   border-radius: 8px;
   padding: 0.9rem 0;
@@ -67,14 +89,18 @@ const Button = styled.button`
   margin-top: 0.5rem;
   transition: background 0.2s;
   &:hover {
-    background: #009e8e;
+    background: ${({ theme }) => theme.primary};
+  }
+
+  @media (max-width: 768px) {
+    padding: 1rem;
   }
 `;
 
 const SignUpLink = styled(Link)`
   background: none;
   border: none;
-  color: #00bfae;
+  color: ${({ theme }) => theme.text};
   font-size: 1rem;
   font-weight: 500;
   margin-top: 1.2rem;
@@ -83,7 +109,7 @@ const SignUpLink = styled(Link)`
   text-decoration: underline;
   transition: color 0.2s;
   &:hover {
-    color: #fff;
+    color: ${({ theme }) => theme.secondary};
   }
 `;
 

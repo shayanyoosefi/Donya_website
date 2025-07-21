@@ -3,52 +3,99 @@ import styled, { keyframes } from 'styled-components';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { RetellWebClient } from 'retell-client-js-sdk';
+import { Link } from 'react-router-dom';
+
 
 const PageContainer = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #00bfae 0%, #2d2e32 100%);
+  background: ${({ theme }) => theme.background};
 `;
 
-const Wrapper = styled.div`
+const Content = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  margin-top: 77px;
+  @media (max-width: 768px) {
+    margin-top: 70px;
+  }
+`;
+
+const Section = styled.section`
+  padding: 6em 0;
+  text-align: center;
+  
+  &:nth-child(even) {
+    background-color: ${({ theme }) => theme.backgroundAlt};
+  }
+
+  @media (max-width: 768px) {
+    padding: 3rem 1rem;
+  }
+
+  /* Center children horizontally */
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  color: #fff;
-  margin-top: 150px;
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.primary};
+  margin-bottom: 2.5rem;
+  text-align: center;
+
+  @media (max-width: 768px) {
+    font-size: 2.1rem;
+    margin-bottom: 2rem;
+  }
 `;
 
 const Slogan = styled.div`
   font-size: 2.1rem;
   font-weight: 700;
-  color: #fff;
-  background: rgba(0,191,174,0.18);
+  color: ${({ theme }) => theme.primary};
+  background: ${({ theme }) => theme.backgroundAlt};
   border-radius: 16px;
   padding: 1.2rem 2.5rem;
   box-shadow: 0 2px 16px rgba(0,191,174,0.08);
   text-align: center;
   margin-bottom: 2.2rem;
+
+  @media (max-width: 768px) {
+    font-size: 1.8rem;
+    padding: 1rem 1.5rem;
+  }
 `;
 
 const Card = styled.div`
-  background: #122524;
+  background: ${({ theme }) => theme.card};
   border-radius: 28px;
   padding: 2.5rem 2.5rem 2.8rem 2.5rem;
   box-shadow: 0 8px 32px rgba(0,0,0,0.13);
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 340px;
+  width: 100%;
+  min-width: 0;
   max-width: 420px;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 2rem;
+  }
 `;
 
 const MicRow = styled.div`
   display: flex;
   align-items: center;
   margin-bottom: 1.2rem;
+  width: 100%;
+  justify-content: center;
 `;
 
 const wave1 = keyframes`
@@ -107,6 +154,7 @@ const AnimatedSoundWave = styled.svg`
     animation-duration: 1.2s;
     animation-iteration-count: infinite;
     animation-timing-function: ease-in-out;
+    fill: ${({ theme }) => theme.secondary};
   }
   rect:nth-child(1) { animation-name: ${wave1}; animation-delay: 0s; }
   rect:nth-child(2) { animation-name: ${wave2}; animation-delay: 0.1s; }
@@ -115,10 +163,15 @@ const AnimatedSoundWave = styled.svg`
   rect:nth-child(5) { animation-name: ${wave5}; animation-delay: 0.2s; }
   rect:nth-child(6) { animation-name: ${wave6}; animation-delay: 0.1s; }
   rect:nth-child(7) { animation-name: ${wave7}; animation-delay: 0s; }
+
+  @media (max-width: 380px) {
+    width: 50px;
+  }
 `;
 
 const MicButton = styled.button`
-  background: #4be18a;
+  background: ${({ theme, isListening, isSpeaking }) =>
+    isListening ? '#ff5252' : isSpeaking ? theme.primary : theme.secondary};
   border-radius: 50%;
   width: 56px;
   height: 56px;
@@ -132,8 +185,8 @@ const MicButton = styled.button`
   transition: box-shadow 0.2s, background 0.2s;
   z-index: 2;
   &:hover, &:focus {
-    background: #00bfae;
-    box-shadow: 0 0 0 10px rgba(0,191,174,0.18), 0 2px 12px rgba(0,0,0,0.13);
+    background: ${({ theme }) => theme.primary};
+    box-shadow: 0 0 0 10px rgba(55,72,54,0.18), 0 2px 12px rgba(0,0,0,0.13);
   }
 `;
 
@@ -146,10 +199,21 @@ const MicIcon = () => (
 );
 
 const CallText = styled.div`
-  color: #fff;
+  color: ${({ theme }) => theme.textSecondary};
   font-size: 1.25rem;
   margin-bottom: 1.6rem;
   text-align: center;
+  span.status-accent {
+    color: ${({ theme }) => theme.primary};
+    font-weight: 700;
+  }
+  span.status-highlight {
+    color: ${({ theme }) => theme.secondary};
+    font-weight: 700;
+  }
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+  }
 `;
 const Phone = styled.span`
   color: #4be18a;
@@ -174,78 +238,98 @@ const DemoButton = styled.button`
   }
 `;
 
-const SectionHeader = styled.h2`
-  color: #fff;
-  font-size: 2rem;
-  font-weight: 700;
-  margin-top: 3.2rem;
-  margin-bottom: 1.2rem;
-  text-align: center;
-  letter-spacing: 0.5px;
-`;
-
 const FeaturesGrid = styled.div`
   display: flex;
   gap: 2.5rem;
   margin: 2.5rem 0 3.5rem 0;
   justify-content: center;
   flex-wrap: wrap;
+  width: 100%;
 `;
 
 const FeatureCard = styled.div`
-  background: #fff;
+  background: ${({ theme }) => theme.card};
   border-radius: 32px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.07);
   padding: 2.5rem 2.2rem 2.2rem 2.2rem;
   max-width: 370px;
-  min-width: 300px;
+  min-width: 0;
   flex: 1 1 300px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  transition: box-shadow 0.2s, transform 0.2s;
+  &:hover {
+    box-shadow: 0 8px 32px rgba(55,72,54,0.18);
+    transform: translateY(-6px) scale(1.03);
+    cursor: pointer;
+  }
+  @media (max-width: 768px) {
+    padding: 2rem;
+    max-width: 100%;
+  }
 `;
 
 const FeatureNumber = styled.div`
   font-size: 4rem;
   font-weight: 700;
-  color: #7be495;
+  color: ${({ theme }) => theme.secondary};
   margin-bottom: 1.2rem;
+
+  @media (max-width: 768px) {
+    font-size: 3rem;
+  }
 `;
 
 const FeatureTitle = styled.h3`
   font-size: 2rem;
   font-weight: 700;
-  color: #222;
+  color: ${({ theme }) => theme.primary};
   margin-bottom: 1.1rem;
+
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+  }
 `;
 
 const FeatureDesc = styled.p`
   font-size: 1.13rem;
-  color: #444;
+  color: ${({ theme }) => theme.textSecondary};
   margin-bottom: 0;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+  }
 `;
 
 const AdminHeader = styled.h2`
-  color: #fff;
+  color: ${({ theme }) => theme.primary};
   font-size: 2rem;
   font-weight: 700;
   margin-top: 2.5rem;
   margin-bottom: 1.2rem;
   text-align: center;
   letter-spacing: 0.5px;
+
+  @media (max-width: 768px) {
+    font-size: 1.8rem;
+  }
 `;
 
 const HorizontalFeatures = styled.div`
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 2.2rem;
   width: 100%;
   max-width: 1200px;
   margin: 2.5rem auto 3.5rem auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
 `;
 
 const HFeatureCard = styled.div`
-  background: #fff;
+  flex: 1 1 300px;
+  background: ${({ theme }) => theme.card};
   border-radius: 18px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   display: flex;
@@ -253,10 +337,17 @@ const HFeatureCard = styled.div`
   padding: 2.2rem 2.5rem;
   gap: 2.2rem;
   min-height: 160px;
+  transition: box-shadow 0.2s, transform 0.2s;
+  &:hover {
+    box-shadow: 0 8px 32px rgba(55,72,54,0.18);
+    transform: translateY(-4px) scale(1.02);
+    cursor: pointer;
+  }
   @media (max-width: 800px) {
     flex-direction: column;
     align-items: flex-start;
     gap: 1.2rem;
+    padding: 2rem;
   }
 `;
 
@@ -267,6 +358,11 @@ const HFeatureIcon = styled.div`
   justify-content: center;
   width: 100px;
   height: 100px;
+
+  @media (max-width: 768px) {
+    width: 80px;
+    height: 80px;
+  }
 `;
 
 const HFeatureContent = styled.div`
@@ -277,21 +373,29 @@ const HFeatureContent = styled.div`
 const HFeatureTitle = styled.h3`
   font-size: 2rem;
   font-weight: 700;
-  color: #222;
+  color: ${({ theme }) => theme.primary};
   margin-bottom: 0.7rem;
+
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+  }
 `;
 
 const HFeatureDesc = styled.p`
   font-size: 1.13rem;
-  color: #444;
+  color: ${({ theme }) => theme.textSecondary};
   margin-bottom: 0;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+  }
 `;
 
 const ContactFormWrapper = styled.div`
   width: 100%;
   max-width: 420px;
-  margin: 0 auto 3rem auto;
-  background: #23242a;
+  margin: 0 auto;
+  background: ${({ theme }) => theme.card};
   border-radius: 22px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.16);
   padding: 2.7rem 2.2rem 2.2rem 2.2rem;
@@ -300,29 +404,78 @@ const ContactFormWrapper = styled.div`
   align-items: center;
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
   &::before {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: 22px;
     padding: 2px;
-    background: linear-gradient(120deg, #00bfae 0%, #7be495 100%);
+    background: linear-gradient(120deg, #374836 0%, #445E4F 100%);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
     z-index: 1;
   }
+
+  @media (max-width: 768px) {
+    padding: 2rem;
+  }
+`;
+
+const Wrapper = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  padding: 0 1rem;
+
+  @media (max-width: 768px) {
+    margin-top: 80px;
+    justify-content: flex-start;
+    padding-top: 5rem;
+  }
+`;
+
+const Title = styled.h1`
+  font-size: 2.8rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-align: center;
+  color: ${({ theme }) => theme.text};
+
+  @media (max-width: 768px) {
+    font-size: 2.2rem;
+  }
+`;
+
+const Subtitle = styled.p`
+  font-size: 1.3rem;
+  margin-bottom: 3rem;
+  text-align: center;
+  max-width: 500px;
+  color: ${({ theme }) => theme.textSecondary};
+
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+  }
 `;
 
 const FormTitle = styled.h3`
-  color: #7be495;
+  color: ${({ theme }) => theme.primary};
   font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 1.7rem;
   letter-spacing: 0.5px;
   text-align: center;
   z-index: 2;
+
+  @media (max-width: 768px) {
+    font-size: 1.3rem;
+  }
 `;
 
 const ContactForm = styled.form`
@@ -346,26 +499,31 @@ const FormInput = styled.input`
   border-radius: 10px;
   border: none;
   font-size: 1.08rem;
-  background: #2d2e32;
-  color: #fff;
+  background: ${({ theme }) => theme.backgroundAlt};
+  color: ${({ theme }) => theme.text};
   outline: none;
   transition: box-shadow 0.2s, background 0.2s;
   box-shadow: 0 2px 8px rgba(0,191,174,0.04);
   border: 2px solid transparent;
   &:focus {
-    box-shadow: 0 0 0 2.5px #00bfae, 0 2px 8px rgba(0,191,174,0.04);
-    background: #263238;
-    border: 2px solid #00bfae;
+    box-shadow: 0 0 0 2.5px ${({ theme }) => theme.secondary}, 0 2px 8px rgba(0,191,174,0.04);
+    background: ${({ theme }) => theme.card};
+    border: 2px solid ${({ theme }) => theme.secondary};
   }
   &:hover {
-    background: #263238;
-    border: 2px solid #7be495;
+    background: ${({ theme }) => theme.card};
+    border: 2px solid ${({ theme }) => theme.primary};
+  }
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    padding: 1rem;
   }
 `;
 
 const SubmitButton = styled.button`
-  background: linear-gradient(90deg, #00bfae 0%, #7be495 100%);
-  color: #122524;
+  background: ${({ theme }) => theme.secondary};
+  color: ${({ theme }) => theme.white};
   border: none;
   border-radius: 10px;
   padding: 1rem 0;
@@ -377,11 +535,17 @@ const SubmitButton = styled.button`
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   z-index: 2;
   &:hover {
-    background: linear-gradient(90deg, #7be495 0%, #00bfae 100%);
-    color: #fff;
+    background: ${({ theme }) => theme.primary};
+    color: ${({ theme }) => theme.white};
     box-shadow: 0 6px 32px rgba(0,191,174,0.13);
   }
+
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+    padding: 1.1rem;
+  }
 `;
+  
 
 // Retell AI integration
 const AGENT_ID = 'agent_0ccfd1ffb79bf836aefff15912';
@@ -488,8 +652,9 @@ const VoiceInterface = ({ status, isListening, isSpeaking, onStart, onStop }) =>
       <MicButton
         onClick={isListening ? onStop : onStart}
         disabled={status === 'connecting'}
+        isListening={isListening}
+        isSpeaking={isSpeaking}
         style={{
-          background: isListening ? '#ff5252' : isSpeaking ? '#f0ad4e' : '#4be18a',
           cursor: status === 'connecting' ? 'not-allowed' : 'pointer',
         }}
       >
@@ -506,14 +671,18 @@ const VoiceInterface = ({ status, isListening, isSpeaking, onStart, onStop }) =>
       </AnimatedSoundWave>
     </MicRow>
     <CallText>
-      {status === 'connecting' && 'Connecting...'}
-      {status === 'connected' && (isListening ? 'Listening...' : isSpeaking ? 'Agent is speaking...' : 'Press the mic to talk')}
-      {status === 'disconnected' && 'Connection lost.'}
-      {status === 'idle' && 'Ready to start.'}
+      {status === 'connecting' && <span className="status-accent">Connecting...</span>}
+      {status === 'connected' && (
+        isListening ? <span className="status-highlight">Listening...</span>
+        : isSpeaking ? <span className="status-highlight">Agent is speaking...</span>
+        : <span className="status-accent">Press the mic to talk</span>
+      )}
+      {status === 'disconnected' && <span className="status-accent">Connection lost.</span>}
+      {status === 'idle' && <span className="status-accent">Ready to start.</span>}
     </CallText>
     {/* Debug status indicator */}
-    <div style={{ color: '#7be495', fontSize: '0.95rem', marginTop: 8, textAlign: 'center' }}>
-      <b>Status:</b> {status}
+    <div style={{ color: '#374836', fontSize: '0.95rem', marginTop: 8, textAlign: 'center' }}>
+      <b style={{ color: '#374836' }}>Status:</b> {status}
     </div>
   </Card>
 );
@@ -523,108 +692,143 @@ const GetStarted = () => {
 
   return (
     <PageContainer>
-      <Wrapper>
-        <TopBar />
-        <Slogan>Talk to Our AI Assistant</Slogan>
-        <VoiceInterface
-          status={status}
-          isListening={isListening}
-          isSpeaking={isSpeaking}
-          onStart={startConversation}
-          onStop={stopConversation}
-        />
-        <SectionHeader>What Donya can do for you?</SectionHeader>
-        <FeaturesGrid>
-          <FeatureCard>
-            <FeatureNumber>01</FeatureNumber>
-            <FeatureTitle>Build your brand</FeatureTitle>
-            <FeatureDesc>
-              We will build your personal brand starting with your website. We will also create videos and content which showcase you.
-            </FeatureDesc>
-          </FeatureCard>
-          <FeatureCard>
-            <FeatureNumber>02</FeatureNumber>
-            <FeatureTitle>Scale your business</FeatureTitle>
-            <FeatureDesc>
-              We help you to qualify customers, manage schedules and menus, payments and book keeping. We make sure you can scale your business effortlessly.
-            </FeatureDesc>
-          </FeatureCard>
-          <FeatureCard>
-            <FeatureNumber>03</FeatureNumber>
-            <FeatureTitle>24x7 AI assistant</FeatureTitle>
-            <FeatureDesc>
-              We are available 24x7 for your customers, making sure they get all the assistance they need. Your trusted assistant makes you more successful.
-            </FeatureDesc>
-          </FeatureCard>
-        </FeaturesGrid>
-        <AdminHeader>Let our AI assistant handle 90% of your admin work</AdminHeader>
-        <HorizontalFeatures>
-          <HFeatureCard>
-            <HFeatureIcon>
-              {/* Browser/Page Icon */}
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="10" y="18" width="60" height="44" rx="6" fill="#DFF6E6" stroke="#122524" strokeWidth="2"/>
-                <rect x="18" y="28" width="24" height="6" rx="2" fill="#7be495"/>
-                <rect x="18" y="38" width="16" height="4" rx="2" fill="#B2EFCF"/>
-                <rect x="18" y="46" width="12" height="4" rx="2" fill="#B2EFCF"/>
-                <rect x="36" y="46" width="16" height="4" rx="2" fill="#B2EFCF"/>
-                <polygon points="60,56 70,66 62,66 62,74 54,74 54,66 46,66" fill="#7be495" stroke="#122524" strokeWidth="2"/>
-              </svg>
-            </HFeatureIcon>
-            <HFeatureContent>
-              <HFeatureTitle>Personalized Website</HFeatureTitle>
-              <HFeatureDesc>
-                Stand out with a personalized, Cactus-free storefront—no coding, no extra cost. Just you, fully branded.
-              </HFeatureDesc>
-            </HFeatureContent>
-          </HFeatureCard>
-          <HFeatureCard>
-            <HFeatureIcon>
-              {/* Target Icon */}
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="40" cy="40" r="30" fill="#DFF6E6" stroke="#122524" strokeWidth="2"/>
-                <circle cx="40" cy="40" r="18" fill="#B2EFCF" stroke="#122524" strokeWidth="2"/>
-                <circle cx="40" cy="40" r="8" fill="#7be495" stroke="#122524" strokeWidth="2"/>
-                <polygon points="60,20 74,6 70,26" fill="#7be495" stroke="#122524" strokeWidth="2"/>
-              </svg>
-            </HFeatureIcon>
-            <HFeatureContent>
-              <HFeatureTitle>Customer qualification</HFeatureTitle>
-              <HFeatureDesc>
-                AI qualifies new leads for you based on your requirements! Pam also follows up and makes sure you don't miss any new opportunities
-              </HFeatureDesc>
-            </HFeatureContent>
-          </HFeatureCard>
-          <HFeatureCard>
-            <HFeatureIcon>
-              {/* Calendar Icon */}
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="12" y="20" width="56" height="44" rx="6" fill="#DFF6E6" stroke="#122524" strokeWidth="2"/>
-                <rect x="20" y="32" width="40" height="20" rx="3" fill="#B2EFCF"/>
-                <rect x="20" y="56" width="12" height="4" rx="2" fill="#7be495"/>
-                <rect x="48" y="56" width="12" height="4" rx="2" fill="#7be495"/>
-                <circle cx="64" cy="64" r="8" fill="#7be495" stroke="#122524" strokeWidth="2"/>
-                <polyline points="60,64 63,67 68,61" fill="none" stroke="#122524" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </HFeatureIcon>
-            <HFeatureContent>
-              <HFeatureTitle>Scheduling and coordination</HFeatureTitle>
-              <HFeatureDesc>
-                AI manages your calendar, keeps on top of upcoming engagements and sends reminders, to-dos to ensure smooth operations
-              </HFeatureDesc>
-            </HFeatureContent>
-          </HFeatureCard>
-        </HorizontalFeatures>
-        <ContactFormWrapper>
-          <FormTitle>Let us call you!</FormTitle>
-          <ContactForm>
-            <FormInput id="name" name="name" type="text" placeholder="Name" required />
-            <FormInput id="phone" name="phone" type="tel" placeholder="Phone Number" required />
-            <FormInput id="email" name="email" type="email" placeholder="Email" required />
-            <SubmitButton type="submit">Submit</SubmitButton>
-          </ContactForm>
-        </ContactFormWrapper>
-      </Wrapper>
+      <TopBar />
+      <Content>
+        <Section className='hero-section'>
+          <Slogan>Talk to Our AI Assistant</Slogan>
+          <VoiceInterface
+            status={status}
+            isListening={isListening}
+            isSpeaking={isSpeaking}
+            onStart={startConversation}
+            onStop={stopConversation}
+          />
+        </Section>
+
+        <Section>
+          <SectionTitle>Let our AI assistant handle 90% of your admin work</SectionTitle>
+          <HorizontalFeatures>
+            <HFeatureCard>
+              <HFeatureIcon>
+                {/* Browser/Page Icon */}
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="10" y="18" width="60" height="44" rx="6" fill="#DFF6E6" stroke="#122524" strokeWidth="2"/>
+                  <rect x="18" y="28" width="24" height="6" rx="2" fill="#7be495"/>
+                  <rect x="18" y="38" width="16" height="4" rx="2" fill="#B2EFCF"/>
+                  <rect x="18" y="46" width="12" height="4" rx="2" fill="#B2EFCF"/>
+                  <rect x="36" y="46" width="16" height="4" rx="2" fill="#B2EFCF"/>
+                  <polygon points="60,56 70,66 62,66 62,74 54,74 54,66 46,66" fill="#7be495" stroke="#122524" strokeWidth="2"/>
+                </svg>
+              </HFeatureIcon>
+              <HFeatureContent>
+                <HFeatureTitle>Personalized Website</HFeatureTitle>
+                <HFeatureDesc>
+                  Stand out with a personalized, Cactus-free storefront—no coding, no extra cost. Just you, fully branded.
+                </HFeatureDesc>
+              </HFeatureContent>
+            </HFeatureCard>
+            <HFeatureCard>
+              <HFeatureIcon>
+                {/* Target Icon */}
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="40" cy="40" r="30" fill="#DFF6E6" stroke="#122524" strokeWidth="2"/>
+                  <circle cx="40" cy="40" r="18" fill="#B2EFCF" stroke="#122524" strokeWidth="2"/>
+                  <circle cx="40" cy="40" r="8" fill="#7be495" stroke="#122524" strokeWidth="2"/>
+                  <polygon points="60,20 74,6 70,26" fill="#7be495" stroke="#122524" strokeWidth="2"/>
+                </svg>
+              </HFeatureIcon>
+              <HFeatureContent>
+                <HFeatureTitle>Customer qualification</HFeatureTitle>
+                <HFeatureDesc>
+                  AI qualifies new leads for you based on your requirements! Pam also follows up and makes sure you don't miss any new opportunities
+                </HFeatureDesc>
+              </HFeatureContent>
+            </HFeatureCard>
+            <HFeatureCard>
+              <HFeatureIcon>
+                {/* Calendar Icon */}
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="12" y="20" width="56" height="44" rx="6" fill="#DFF6E6" stroke="#122524" strokeWidth="2"/>
+                  <rect x="20" y="32" width="40" height="20" rx="3" fill="#B2EFCF"/>
+                  <rect x="20" y="56" width="12" height="4" rx="2" fill="#7be495"/>
+                  <rect x="48" y="56" width="12" height="4" rx="2" fill="#7be495"/>
+                  <circle cx="64" cy="64" r="8" fill="#7be495" stroke="#122524" strokeWidth="2"/>
+                  <polyline points="60,64 63,67 68,61" fill="none" stroke="#122524" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </HFeatureIcon>
+              <HFeatureContent>
+                <HFeatureTitle>Scheduling and coordination</HFeatureTitle>
+                <HFeatureDesc>
+                  AI manages your calendar, keeps on top of upcoming engagements and sends reminders, to-dos to ensure smooth operations
+                </HFeatureDesc>
+              </HFeatureContent>
+            </HFeatureCard>
+            <HFeatureCard>
+              <HFeatureIcon>
+                {/* Checklist/Document Icon */}
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="16" y="16" width="48" height="48" rx="8" fill="#DFF6E6" stroke="#122524" strokeWidth="2"/>
+                  <rect x="26" y="28" width="28" height="4" rx="2" fill="#7be495"/>
+                  <rect x="26" y="38" width="18" height="4" rx="2" fill="#B2EFCF"/>
+                  <rect x="26" y="48" width="22" height="4" rx="2" fill="#B2EFCF"/>
+                  <polyline points="30,54 36,60 50,46" fill="none" stroke="#7be495" strokeWidth="3" strokeLinecap="round"/>
+                </svg>
+              </HFeatureIcon>
+              <HFeatureContent>
+                <HFeatureTitle>Automated Paperwork</HFeatureTitle>
+                <HFeatureDesc>
+                  Let our AI handle invoices, reminders, and routine paperwork so you can focus on what matters most.
+                </HFeatureDesc>
+              </HFeatureContent>
+            </HFeatureCard>
+          </HorizontalFeatures>
+        </Section>
+        
+        <Section className='admin-section'>
+          <SectionTitle>What Donya can do for you?</SectionTitle>
+          <FeaturesGrid>
+            <FeatureCard>
+              <FeatureNumber>01</FeatureNumber>
+              <FeatureTitle>Build your brand</FeatureTitle>
+              <FeatureDesc>
+                We will build your personal brand starting with your website. We will also create videos and content which showcase you.
+              </FeatureDesc>
+            </FeatureCard>
+            <FeatureCard>
+              <FeatureNumber>02</FeatureNumber>
+              <FeatureTitle>Scale your business</FeatureTitle>
+              <FeatureDesc>
+                We help you to qualify customers, manage schedules and menus, payments and book keeping. We make sure you can scale your business effortlessly.
+              </FeatureDesc>
+            </FeatureCard>
+            <FeatureCard>
+              <FeatureNumber>03</FeatureNumber>
+              <FeatureTitle>24x7 AI assistant</FeatureTitle>
+              <FeatureDesc>
+                We are available 24x7 for your customers, making sure they get all the assistance they need. Your trusted assistant makes you more successful.
+              </FeatureDesc>
+            </FeatureCard>
+          </FeaturesGrid>
+        </Section>
+
+        <Section>
+          <Wrapper>
+            <Title>Welcome to Donya</Title>
+            <Subtitle>
+              Your AI-powered business website assistant. Instantly create a beautiful website for your business and get an AI assistant to handle bookings, answer FAQs, and delight your customers.
+            </Subtitle>
+          </Wrapper>
+          <ContactFormWrapper>
+            <FormTitle>Let us call you!</FormTitle>
+            <ContactForm>
+              <FormInput id="name" name="name" type="text" placeholder="Name" required />
+              <FormInput id="phone" name="phone" type="tel" placeholder="Phone Number" required />
+              <FormInput id="email" name="email" type="email" placeholder="Email" required />
+              <SubmitButton type="submit">Submit</SubmitButton>
+            </ContactForm>
+          </ContactFormWrapper>
+        </Section>
+      </Content>
       <Footer />
     </PageContainer>
   );

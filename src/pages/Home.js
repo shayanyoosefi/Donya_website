@@ -8,7 +8,7 @@ const PageContainer = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #00bfae 0%, #2d2e32 100%);
+  background: ${({ theme }) => theme.background};
 `;
 
 const Wrapper = styled.div`
@@ -19,6 +19,13 @@ const Wrapper = styled.div`
   justify-content: center;
   color: #fff;
   margin-top: 150px;
+  padding: 0 1rem;
+
+  @media (max-width: 768px) {
+    margin-top: 80px;
+    justify-content: flex-start;
+    padding-top: 5rem;
+  }
 `;
 
 const Title = styled.h1`
@@ -26,6 +33,11 @@ const Title = styled.h1`
   font-weight: 700;
   margin-bottom: 1rem;
   text-align: center;
+  color: ${({ theme }) => theme.text};
+
+  @media (max-width: 768px) {
+    font-size: 2.2rem;
+  }
 `;
 
 const Subtitle = styled.p`
@@ -33,11 +45,16 @@ const Subtitle = styled.p`
   margin-bottom: 2rem;
   text-align: center;
   max-width: 500px;
+  color: ${({ theme }) => theme.textSecondary};
+
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+  }
 `;
 
 const CTAButton = styled(Link)`
-  background: #fff;
-  color: #00bfae;
+  background: ${({ theme }) => theme.secondary};
+  color: ${({ theme }) => theme.white};
   border: none;
   border-radius: 30px;
   padding: 0.9rem 2.2rem;
@@ -49,8 +66,13 @@ const CTAButton = styled(Link)`
   text-decoration: none;
   display: inline-block;
   &:hover {
-    background: #00bfae;
-    color: #fff;
+    background: ${({ theme }) => theme.primary};
+    color: ${({ theme }) => theme.white};
+  }
+
+  @media (max-width: 768px) {
+    font-size: 1.2rem;
+    padding: 1rem 2.5rem;
   }
 `;
 

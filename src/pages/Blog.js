@@ -7,7 +7,7 @@ const PageContainer = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #00bfae 0%, #2d2e32 100%);
+  background: ${({ theme }) => theme.background};
 `;
 
 const Wrapper = styled.div`
@@ -16,8 +16,15 @@ const Wrapper = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: ${({ theme }) => theme.text};
   margin-top: 150px;
+  padding: 0 1rem;
+
+  @media (max-width: 768px) {
+    margin-top: 80px;
+    justify-content: flex-start;
+    padding-top: 5rem;
+  }
 `;
 
 const Blog = () => (

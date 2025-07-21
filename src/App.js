@@ -6,12 +6,13 @@ import SignUp from './pages/SignUp';
 import GetStarted from './pages/GetStarted';
 import AboutUs from './pages/AboutUs';
 import Policy from './pages/Policy';
+import '../src/App.css'; // Assuming you have some global styles
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<GetStarted />} />
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/get-started" element={<GetStarted />} />

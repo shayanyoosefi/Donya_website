@@ -5,32 +5,44 @@ import { FaLinkedin, FaTwitter, FaInstagram, FaFacebook } from 'react-icons/fa';
 
 const FooterWrapper = styled.footer`
   width: 100%;
-  background: #122524;
-  color: #fff;
+  background: ${({ theme }) => theme.primary};
+  color: ${({ theme }) => theme.white};
   padding: 2.2rem 0 1.2rem 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 4rem;
   box-sizing: border-box;
+  text-align: center;
 `;
 
 const NavLinks = styled.div`
   display: flex;
   gap: 2.5rem;
   margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+
+  @media (max-width: 768px) {
+    gap: 1.5rem;
+    flex-direction: column;
+    margin-bottom: 2rem;
+  }
 `;
 
 const FooterLink = styled(Link)`
-  color: #fff;
+  color: ${({ theme }) => theme.white};
   font-size: 1.08rem;
   font-weight: 500;
   text-decoration: none;
   opacity: 0.85;
   transition: color 0.2s, opacity 0.2s;
   &:hover {
-    color: #00bfae;
+    color: ${({ theme }) => theme.secondary};
     opacity: 1;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 1.2rem;
   }
 `;
 
@@ -38,23 +50,36 @@ const SocialLinks = styled.div`
   display: flex;
   gap: 1.5rem;
   margin-bottom: 0.7rem;
+
+  @media (max-width: 768px) {
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+  }
 `;
 
 const SocialIcon = styled.a`
-  color: #7be495;
+  color: ${({ theme }) => theme.card};
   font-size: 1.5rem;
   opacity: 0.85;
   transition: color 0.2s, opacity 0.2s;
   &:hover {
-    color: #00bfae;
+    color: ${({ theme }) => theme.secondary};
     opacity: 1;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 1.8rem;
   }
 `;
 
 const Copyright = styled.div`
-  color: #b2efcf;
+  color: ${({ theme }) => theme.card};
   font-size: 0.98rem;
   margin-top: 0.5rem;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+  }
 `;
 
 const Footer = () => (

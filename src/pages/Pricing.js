@@ -8,8 +8,15 @@ const Wrapper = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: ${({ theme }) => theme.text};
   margin-top: 150px;
+  padding: 0 1rem;
+
+  @media (max-width: 768px) {
+    margin-top: 80px;
+    justify-content: flex-start;
+    padding-top: 5rem;
+  }
 `;
 
 const Pricing = () => (
