@@ -613,7 +613,7 @@ const useRetellAI = () => {
     setStatus('connecting');
     try {
       // Fetch a fresh access token from your backend
-      const resp = await fetch('http://localhost:5001/api/retell-token', { method: 'POST' });
+      const resp = await fetch('/api/retell-token', { method: 'POST' });
       const { access_token } = await resp.json();
       await retellClientRef.current.startCall({
         accessToken: access_token,
